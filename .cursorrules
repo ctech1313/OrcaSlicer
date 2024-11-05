@@ -1,0 +1,271 @@
+# OrcaSlicer C++ Development Guidelines
+
+## Technology Stack
+- **Programming Language**: Modern C++ (C++17 or newer)
+- **GUI Framework**: Qt
+- **Build System**: CMake
+- **Version Control**: Git & Git LFS
+- **IDE**: Visual Studio 2019
+- **Key Libraries**: libgtk, libwebkit2gtk, libssl, libcurl
+
+## Code Style and Structure
+
+### Naming Conventions
+- **Classes/Structs**: PascalCase
+  ```cpp
+  class SlicingEngine;
+  struct ModelData;
+  ```
+- **Variables/Functions**: camelCase
+  ```cpp
+  int layerHeight;
+  void calculateSlice();
+  ```
+- **Constants/Macros**: UPPER_SNAKE_CASE
+  ```cpp
+  const int MAX_LAYER_COUNT = 1000;
+  #define DEFAULT_BUFFER_SIZE 4096
+  ```
+
+### File Organization
+- Header files: `.h` or `.hpp`
+- Source files: `.cpp`
+- Separate declarations from definitions
+- Group related functionality into modules
+- Use namespaces effectively
+
+## Best Practices
+
+### Modern C++ Features
+- Use C++17 capabilities:
+  - Structured bindings
+  - Filesystem library
+  - Parallel algorithms
+  - Template features
+
+### Memory Management
+```cpp
+// Prefer smart pointers
+std::unique_ptr<Model> model = std::make_unique<Model>();
+std::shared_ptr<Resource> shared = std::make_shared<Resource>();
+
+// Avoid raw pointers except for non-owning references
+const Data* data = getData(); // Non-owning pointer
+```
+
+### Error Handling
+```cpp
+try {
+    // Operation that might fail
+    processModel(model);
+} catch (const ModelException& e) {
+    logger.error("Model processing failed: {}", e.what());
+    // Handle error appropriately
+}
+
+// Use assertions for development-time checks
+assert(layerHeight > 0 && "Layer height must be positive");
+```
+
+### Concurrency
+```cpp
+// Use std::async for parallel operations
+auto future = std::async(std::launch::async, &SlicingEngine::processLayer, this, layerData);
+
+// Protect shared resources
+std::mutex mtx;
+std::lock_guard<std::mutex> lock(mtx);
+```
+
+## Performance Optimization
+
+### General Guidelines
+- Profile before optimizing
+- Use efficient containers and algorithms
+- Implement lazy loading where appropriate
+- Leverage move semantics
+
+### Multithreading Example
+```cpp
+class SlicingEngine {
+private:
+    ThreadPool threadPool;
+    std::vector<Layer> layers;
+
+public:
+    void processLayers() {
+        std::vector<std::future<void>> futures;
+        
+        for (auto& layer : layers) {
+            futures.push_back(
+                threadPool.enqueue([&layer]() {
+                    layer.process();
+                })
+            );
+        }
+        
+        // Wait for all layers to complete
+        for (auto& future : futures) {
+            future.wait();
+        }
+    }
+};
+```
+
+## Testing
+
+### Unit Test Example
+```cpp
+#include <gtest/gtest.h>
+
+TEST(SlicingEngineTest, LayerHeightValidation) {
+    SlicingEngine engine;
+    EXPECT_THROW(engine.setLayerHeight(-1.0), std::invalid_argument);
+    EXPECT_NO_THROW(engine.setLayerHeight(0.1));
+    EXPECT_EQ(engine.getLayerHeight(), 0.1);
+}
+```
+
+## Qt Best Practices
+
+### Signal-Slot Connections
+```cpp
+class ModelViewer : public QWidget {
+    Q_OBJECT
+
+public:
+    ModelViewer(QWidget* parent = nullptr);
+
+signals:
+    void modelLoaded(const QString& modelName);
+
+private slots:
+    void handleModelChange();
+
+private:
+    void setupConnections() {
+        connect(loadButton, &QPushButton::clicked,
+                this, &ModelViewer::handleModelChange);
+    }
+};
+```
+
+## Resource Management
+
+### RAII Pattern
+```cpp
+class FileHandler {
+private:
+    std::unique_ptr<File> file;
+
+public:
+    FileHandler(const std::string& path)
+        : file(std::make_unique<File>(path)) {}
+    
+    // Destructor handles cleanup automatically
+    ~FileHandler() = default;
+};
+```
+
+## Security Considerations
+
+### Input Validation
+```cpp
+bool validateInput(const std::string& input) {
+    // Check for maximum length
+    if (input.length() > MAX_INPUT_LENGTH) {
+        return false;
+    }
+    
+    // Check for valid characters
+    return std::all_of(input.begin(), input.end(),
+                      [](char c) { return isValidChar(c); });
+}
+```
+
+## Build Configuration
+
+### CMake Example
+```cmake
+cmake_minimum_required(VERSION 3.14)
+project(OrcaSlicer VERSION 1.0)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Find required packages
+find_package(Qt5 COMPONENTS Core Widgets REQUIRED)
+find_package(OpenSSL REQUIRED)
+
+# Add executable
+add_executable(OrcaSlicer
+    src/main.cpp
+    src/SlicingEngine.cpp
+    src/ModelViewer.cpp
+)
+
+# Link libraries
+target_link_libraries(OrcaSlicer
+    PRIVATE
+        Qt5::Core
+        Qt5::Widgets
+        OpenSSL::SSL
+)
+```
+
+## Documentation
+
+### Doxygen Example
+```cpp
+/**
+ * @brief Processes a 3D model for slicing
+ * @param model The 3D model to process
+ * @param layerHeight Height of each layer in mm
+ * @throws ModelException if the model is invalid
+ * @return Vector of processed layers
+ */
+std::vector<Layer> processModel(const Model& model, double layerHeight);
+```
+
+## Version Control
+
+### Git Commit Guidelines
+- Use descriptive commit messages
+- Include issue references
+- Follow semantic versioning
+- Use Git LFS for large binary files
+
+### Example Commit Message
+```
+feat(slicing): implement adaptive layer height
+
+- Add algorithm for variable layer height calculation
+- Optimize memory usage for large models
+- Add unit tests for new functionality
+
+Fixes #123
+```
+
+## Continuous Integration
+
+### Build Pipeline Example
+```yaml
+steps:
+  - name: Build
+    run: |
+      cmake -B build
+      cmake --build build --config Release
+      
+  - name: Test
+    run: |
+      cd build
+      ctest --output-on-failure
+```
+
+## Additional Notes
+- Keep dependencies up to date
+- Monitor performance metrics
+- Regular code reviews
+- Maintain comprehensive documentation
+- Follow security best practices
+- Regular testing and validation

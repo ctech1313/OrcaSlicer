@@ -29,6 +29,8 @@
 #include "libslic3r/CutUtils.hpp"
 #include "libslic3r/FlushVolCalc.hpp"
 
+#include "CustomPrimitiveManager.hpp"
+
 #define FILAMENT_SYSTEM_COLORS_NUM      16
 
 class wxButton;
@@ -818,6 +820,14 @@ private:
 
     friend class SuppressBackgroundProcessingUpdate;
     friend class PlaterDropTarget;
+
+    std::unique_ptr<CustomPrimitiveManager> m_custom_primitive_manager;
+    void init_custom_primitives();
+    void add_custom_primitive(const CustomPrimitive& primitive);
+    void build_custom_primitive_menu();
+
+    void refresh_custom_primitives();
+    void on_custom_primitives_changed(wxCommandEvent& evt);
 };
 
 class SuppressBackgroundProcessingUpdate
